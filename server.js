@@ -3,6 +3,7 @@ import axios from "axios";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
