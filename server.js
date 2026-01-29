@@ -34,22 +34,6 @@ function parseBody(req) {
 
   return { _raw: raw, _contentType: contentType };
 }
-
-function normalizeLeadEvent(event) {
-  return {
-    event: "lead_created_or_assigned",
-    timestamp: new Date().toISOString(),
-    lead: {
-      id: event.id,
-      name: event.name,
-      email: event.email,
-      phone: event.phone,
-      company: event.company,
-      status_id: event.lead_status_id,
-      source_id: event.lead_source_id,
-      assigned_to: event.assigned_to
-    }
-  };
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
