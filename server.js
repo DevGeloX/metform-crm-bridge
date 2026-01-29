@@ -81,23 +81,25 @@ app.post("/webhooks/metform-contact", async (req, res) => {
 });
 
 app.post("/webhooks/crm-events", (req, res) => {
-  let event = req.body;
-
-  try {
-    // If body looks like {"{...json...}": ""}, recover it:
-    if (event && typeof event === "object") {
-      const keys = Object.keys(event);
-      if (keys.length === 1 && keys[0].trim().startsWith("{")) {
-        event = JSON.parse(keys[0]);
-      }
-    }
-  } catch (e) {
-    console.error("Failed to parse CRM event JSON:", e.message);
+  let event = null;
+  if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
+    event = req.body;
   }
 
-  console.log("CRM webhook event normalized:", JSON.stringify(event, null, 2));
+  if (event && typeof event === "object") {
+    const keys = Object.keys(event);
+    if (keys.length === 1 && keys[0].trim().startsWith("{")) {
+      try {
+        event = JSON.parse(keys[0]);
+      } catch (e) {
+        // keep going
+      }
+    }
+  }
+  console.log("CRM webhook event FINAL:", JSON.stringify(event, null, 2));
   return res.status(200).json({ ok: true });
 });
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log("Listening on", port));
