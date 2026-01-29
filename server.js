@@ -2,9 +2,40 @@ import express from "express";
 import axios from "axios";
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
+// Capture raw body for ALL requests
+app.use(express.raw({ type: "*/*", limit: "2mb" }));
 
+function parseBody(req) {
+  const contentType = (req.headers["content-type"] || "").toLowerCase();
+  const raw = req.body ? req.body.toString("utf8") : "";
+
+  // If it's JSON already
+  if (contentType.includes("application/json")) {
+    try { return JSON.parse(raw); } catch { return { _raw: raw }; }
+  }
+
+  // If it's form-urlencoded or text
+  // Some CRMs send: {"a":1,"b":2}=
+  const trimmed = raw.trim();
+
+  // Try "key=value" style
+  const eqIndex = trimmed.indexOf("=");
+  const candidate = eqIndex >= 0 ? trimmed.slice(0, eqIndex) : trimmed;
+
+  // Try parse candidate as JSON
+  if (candidate.startsWith("{") || candidate.startsWith("[")) {
+    try { return JSON.parse(candidate); } catch { /* fallthrough */ }
+  }
+
+  // Fallback: try parse whole raw
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try { return JSON.parse(trimmed); } catch { /* fallthrough */ }
+  }
+
+  return { _raw: raw, _contentType: contentType };
+}
+//app.use(express.json({ limit: "1mb" }));
+//app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
@@ -21,7 +52,7 @@ app.post("/webhooks/metform-contact", async (req, res) => {
     }
 
     // Raw MetForm payload
-    const payload = req.body;
+    const payload = parseBody(req);
     console.log("MetForm payload:", JSON.stringify(payload, null, 2));
 
     // TODO: Adjust these keys after you see real payload keys in logs
@@ -81,25 +112,13 @@ app.post("/webhooks/metform-contact", async (req, res) => {
 });
 
 app.post("/webhooks/crm-events", (req, res) => {
-  let event = null;
-  if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
-    event = req.body;
-  }
+  const event = parseBody(req);
 
-  if (event && typeof event === "object") {
-    const keys = Object.keys(event);
-    if (keys.length === 1 && keys[0].trim().startsWith("{")) {
-      try {
-        event = JSON.parse(keys[0]);
-      } catch (e) {
-        // keep going
-      }
-    }
-  }
-  console.log("CRM webhook event FINAL:", JSON.stringify(event, null, 2));
+  console.log("CRM content-type:", req.headers["content-type"]);
+  console.log("CRM webhook event PARSED:", JSON.stringify(event, null, 2));
+
   return res.status(200).json({ ok: true });
 });
-
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log("Listening on", port));
