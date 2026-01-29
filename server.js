@@ -79,5 +79,10 @@ app.post("/webhooks/metform-contact", async (req, res) => {
   }
 });
 
+app.post("/webhooks/crm-events", (req, res) => {
+  console.log("CRM webhook event:", JSON.stringify(req.body, null, 2));
+  return res.status(200).json({ ok: true });
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log("Listening on", port));
